@@ -5,7 +5,7 @@ const mqttClient = mqtt.connect('mqtt://test.mosquitto.org');
 
 const THRESHOLD_RISE = 1.5;
 const THRESHOLD_DOWN = 0.5;
-const HIGH_CONSUMPTION_THRESHOLD = 8;
+const HIGH_CONSUMPTION_THRESHOLD = 18;
 
 function checkForAnomalies(data) {
     const last5 = data.slice(-5);
