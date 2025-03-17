@@ -1,24 +1,37 @@
-import axios from 'axios';
+const mqtt = require('mqtt');
+const axios = require('axios');
 
-const THRESHOLD_UP = 1.5;
+const mqttClient = mqtt.connect('mqtt://test.mosquitto.org');
+
+const THRESHOLD_RISE = 1.5;
 const THRESHOLD_DOWN = 0.5;
+const HIGH_CONSUMPTION_THRESHOLD = 8;
 
-// Метод для перевірки різких змін
-export function checkForAnomalies(data) {
+function checkForAnomalies(data) {
     const last5 = data.slice(-5);
 
     if (last5.length < 5) {
-        return; // Якщо даних менше 5, немає чого перевіряти
+        return;
     }
 
     const currentValue = last5[last5.length - 1].current;
     const previousValues = last5.slice(0, 4);
 
-    // Перевіряємо на різке зростання
+    if (currentValue > HIGH_CONSUMPTION_THRESHOLD) {
+        console.log('Anomaly detected: High energy consumption!');
+        mqttClient.publish('home/energy_alert', JSON.stringify({
+            message: 'High energy consumption detected!',
+            value: currentValue
+        }));
+
+        sendAnomalyData('high', currentValue);
+        return;
+    }
+
     for (let i = 0; i < previousValues.length; i++) {
         const prevValue = previousValues[i].current;
 
-        if (currentValue > prevValue * THRESHOLD_UP) {
+        if (currentValue > prevValue * THRESHOLD_RISE) {
             console.log('Anomaly detected: critical rise in energy consumption!');
             mqttClient.publish('home/energy_alert', JSON.stringify({
                 message: 'Critical rise in energy consumption!',
@@ -47,15 +60,14 @@ export function checkForAnomalies(data) {
     }
 }
 
-// Функція для надсилання даних аномалії до системи
 function sendAnomalyData(type, value) {
     const anomalyData = {
-        type: type, // "rise" or "drop"
+        type: type,  // high / rise / drop
         value: value,
         timestamp: new Date().toISOString()
     };
 
-    axios.post(`http://localhost:${port}/api/anomaly`, anomalyData)
+    axios.post(`http://localhost:3000/api/anomaly`, anomalyData)
         .then(response => {
             console.log('Anomaly data sent to the system:', response.data);
         })
@@ -63,3 +75,5 @@ function sendAnomalyData(type, value) {
             console.error('Error sending anomaly data:', error.message);
         });
 }
+
+module.exports = { checkForAnomalies };
