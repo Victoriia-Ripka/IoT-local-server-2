@@ -3,15 +3,19 @@ const mqtt = require('mqtt');
 const fs = require('fs');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+// const { PythonShell } = require('python-shell');
+const apiRoutes = require('./routes/api');
+const { checkForAnomalies } = require('./controllers')
 
 const app = express();
 const port = 3000;
-
-const DATA_FILE = 'energy_data.json';
+const DATA_FILE = 'data/energy_data.json';
 
 app.use(bodyParser.json());
-app.use(express.json()); 
+app.use(express.json());
 app.use(cors());
+
+app.use('/api', apiRoutes);
 
 const mqttClient = mqtt.connect('mqtt://test.mosquitto.org');
 const mqttTopic = 'home/energy';
@@ -31,11 +35,11 @@ mqttClient.on('message', (topic, message) => {
             }
 
             const energyEntry = { time: new Date().toISOString(), current: payload.current };
-            
+
             let data = [];
             if (fs.existsSync(DATA_FILE)) {
                 const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
-                if (fileData.trim()) { 
+                if (fileData.trim()) {
                     data = JSON.parse(fileData);
                 }
             }
@@ -44,19 +48,12 @@ mqttClient.on('message', (topic, message) => {
             fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
             console.log(`Saved data: ${JSON.stringify(energyEntry)}`);
 
+            // Перевірка на різкі зміни у споживанні енергії
+            checkForAnomalies(data);
+
         } catch (error) {
             console.error("Error processing MQTT message:", error.message);
         }
-    }
-});
-
-// API для отримання історичних даних
-app.get('/api/data', (req, res) => {
-    if (fs.existsSync(DATA_FILE)) {
-        const data = JSON.parse(fs.readFileSync(DATA_FILE));
-        res.json(data.slice(-50));
-    } else {
-        res.json([]);
     }
 });
 
