@@ -3,7 +3,6 @@ const mqtt = require('mqtt');
 const fs = require('fs');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-// const { PythonShell } = require('python-shell');
 const apiRoutes = require('./routes/api');
 const { checkForAnomalies } = require('./controllers')
 

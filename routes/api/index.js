@@ -1,7 +1,6 @@
 const express = require('express');
 const fs = require('fs');
 const { PythonShell } = require('python-shell');
-// const axios = require('axios');
 const router = express.Router();
 
 const DATA_FILE = 'data/energy_data.json';
@@ -18,13 +17,19 @@ router.get('/data', (req, res) => {
 
 // Predict anomalies using Python script
 router.get('/predict', (req, res) => {
-    PythonShell.run('predict_anomalies.py', null, (err, result) => {
+    PythonShell.run('python/predict_anomalies.py', null, (err, result) => {
         if (err) {
             console.error('Error running Python script:', err);
             res.status(500).send('Server Error');
-        } else {
-            const anomalies = JSON.parse(result[0]);
+            return 
+        } 
+
+        try {
+            const anomalies = JSON.parse(result.join(''));
             res.json({ anomalies });
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            res.status(500).json({ error: 'Invalid JSON from Python script' });
         }
     });
 });
